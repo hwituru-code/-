@@ -21,7 +21,7 @@ export function NavBar() {
     >
       <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
         <Link href="/" className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-          통증일지
+          심프텀 노트
         </Link>
         <nav className="flex items-center gap-1">
           {LINKS.map((link) => {

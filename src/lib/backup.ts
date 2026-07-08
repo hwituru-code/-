@@ -82,7 +82,7 @@ function formatEntriesAsText(title: string, entries: PainEntry[]): string {
 const UTF8_BOM = "﻿";
 
 export function exportAllEntriesAsText(entries: PainEntry[]): void {
-  const text = formatEntriesAsText("통증일지 - 전체 기록", entries);
+  const text = formatEntriesAsText("심프텀 노트 - 전체 기록", entries);
   triggerDownload(
     `pain-log-all-${todayStamp()}.txt`,
     new Blob([UTF8_BOM + text], { type: "text/plain;charset=utf-8" })
@@ -95,7 +95,7 @@ export function exportEntriesByBodyPartAsText(entries: PainEntry[]): void {
   const files: Record<string, Uint8Array> = {};
   const encoder = new TextEncoder();
   for (const [part, list] of byPart) {
-    const text = formatEntriesAsText(`통증일지 - ${part} 기록`, list);
+    const text = formatEntriesAsText(`심프텀 노트 - ${part} 기록`, list);
     files[`${sanitizeFilenamePart(part)}.txt`] = encoder.encode(UTF8_BOM + text);
   }
   const zipped = zipSync(files);
@@ -199,7 +199,7 @@ export async function parseImportFiles(files: FileList | File[]): Promise<Parsed
 
       const valid = await parseJSONFile(file);
       if (valid.length === 0) {
-        fileErrors.push({ fileName: file.name, message: "통증일지에서 내보낸 파일 형식이 아니에요." });
+        fileErrors.push({ fileName: file.name, message: "심프텀 노트에서 내보낸 파일 형식이 아니에요." });
         continue;
       }
       entries.push(...valid);

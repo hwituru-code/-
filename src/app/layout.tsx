@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "통증일지",
+  title: "심프텀 노트",
   description: "일상 기록을 분석해 만성 통증의 원인과 개선 방안을 찾아주는 앱",
 };
 

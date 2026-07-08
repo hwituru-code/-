@@ -23,7 +23,7 @@ export default function HomePage() {
           오늘의 기록
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          통증과 관련 있다고 생각되는 것을 자유롭게 적어보세요. 두서없이, 생각날 때마다 적어도 괜찮아요.
+          증상과 관련 있다고 생각되는 것을 자유롭게 적어보세요. 두서없이, 생각날 때마다 적어도 괜찮아요.
         </p>
       </div>
 
