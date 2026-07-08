@@ -77,9 +77,16 @@ function formatEntriesAsText(title: string, entries: PainEntry[]): string {
 }
 
 /** 전체 기록을 사람이 읽기 좋은 하나의 텍스트(.txt) 파일로 내려받는다. */
+// Windows 메모장 등 일부 텍스트 뷰어는 BOM 없는 UTF-8을 시스템 로캘(CP949 등)로 잘못 해석해
+// 한글이 깨져 보인다. BOM을 붙여 UTF-8임을 명시한다.
+const UTF8_BOM = "﻿";
+
 export function exportAllEntriesAsText(entries: PainEntry[]): void {
   const text = formatEntriesAsText("통증일지 - 전체 기록", entries);
-  triggerDownload(`pain-log-all-${todayStamp()}.txt`, new Blob([text], { type: "text/plain;charset=utf-8" }));
+  triggerDownload(
+    `pain-log-all-${todayStamp()}.txt`,
+    new Blob([UTF8_BOM + text], { type: "text/plain;charset=utf-8" })
+  );
 }
 
 /** 신체 부위별로 나눠서 여러 개의 텍스트(.txt) 파일을 하나의 zip으로 내려받는다. */
@@ -89,7 +96,7 @@ export function exportEntriesByBodyPartAsText(entries: PainEntry[]): void {
   const encoder = new TextEncoder();
   for (const [part, list] of byPart) {
     const text = formatEntriesAsText(`통증일지 - ${part} 기록`, list);
-    files[`${sanitizeFilenamePart(part)}.txt`] = encoder.encode(text);
+    files[`${sanitizeFilenamePart(part)}.txt`] = encoder.encode(UTF8_BOM + text);
   }
   const zipped = zipSync(files);
   triggerDownload(`pain-log-by-bodypart-text-${todayStamp()}.zip`, new Blob([zipped], { type: "application/zip" }));
