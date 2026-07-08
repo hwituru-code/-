@@ -5,7 +5,7 @@ import { NewEntryInput, PainEntry } from "../analysis/types";
 import { createSupabaseBrowserClient, isSupabaseConfigured } from "../supabase/client";
 import { LocalEntryRepository } from "./local";
 import { SupabaseEntryRepository } from "./supabase";
-import { EntryRepository } from "./types";
+import { EntryRepository, ImportResult } from "./types";
 
 export type AuthState =
   | { mode: "local" }
@@ -92,5 +92,15 @@ export function useEntries() {
     [refresh]
   );
 
-  return { authState, entries, entriesLoading, error, addEntry, deleteEntry, refresh };
+  const importEntries = useCallback(
+    async (imported: PainEntry[]): Promise<ImportResult> => {
+      if (!repoRef.current) throw new Error("저장소가 준비되지 않았습니다.");
+      const result = await repoRef.current.importEntries(imported);
+      await refresh();
+      return result;
+    },
+    [refresh]
+  );
+
+  return { authState, entries, entriesLoading, error, addEntry, deleteEntry, importEntries, refresh };
 }

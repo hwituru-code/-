@@ -1,0 +1,156 @@
+import { unzipSync, zipSync } from "fflate";
+import { PainEntry } from "./analysis/types";
+
+const EXPORT_VERSION = 1;
+
+interface ExportFile {
+  version: number;
+  exportedAt: string;
+  entries: PainEntry[];
+}
+
+function sanitizeFilenamePart(value: string): string {
+  return value.replace(/[\\/:*?"<>|\s]+/g, "_");
+}
+
+function todayStamp(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function buildExportFile(entries: PainEntry[]): ExportFile {
+  return { version: EXPORT_VERSION, exportedAt: new Date().toISOString(), entries };
+}
+
+function triggerDownload(filename: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  // 파일명은 일부 브라우저/OS 조합에서 비-ASCII 문자를 다루지 못하는 경우가 있어 ASCII로 고정한다.
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function groupByBodyPart(entries: PainEntry[]): Map<string, PainEntry[]> {
+  const byPart = new Map<string, PainEntry[]>();
+  for (const entry of entries) {
+    const parts = entry.analysis.bodyParts.length > 0 ? entry.analysis.bodyParts : ["미분류"];
+    for (const part of parts) {
+      const list = byPart.get(part) ?? [];
+      list.push(entry);
+      byPart.set(part, list);
+    }
+  }
+  return byPart;
+}
+
+/** 전체 기록을 하나의 JSON 파일로 내려받는다. */
+export function exportAllEntries(entries: PainEntry[]): void {
+  const json = JSON.stringify(buildExportFile(entries), null, 2);
+  triggerDownload(`pain-log-all-${todayStamp()}.json`, new Blob([json], { type: "application/json" }));
+}
+
+/**
+ * 신체 부위별로 나눠서 여러 개의 JSON 파일을 하나의 zip으로 내려받는다
+ * (브라우저가 여러 파일을 동시에 다운로드받는 걸 막는 경우가 많아 zip으로 묶는다).
+ * 한 기록이 여러 부위를 언급하면 각 부위 파일에 중복 포함된다.
+ */
+export function exportEntriesByBodyPart(entries: PainEntry[]): void {
+  const byPart = groupByBodyPart(entries);
+  const files: Record<string, Uint8Array> = {};
+  const encoder = new TextEncoder();
+  for (const [part, list] of byPart) {
+    const json = JSON.stringify(buildExportFile(list), null, 2);
+    files[`${sanitizeFilenamePart(part)}.json`] = encoder.encode(json);
+  }
+  const zipped = zipSync(files);
+  triggerDownload(`pain-log-by-bodypart-${todayStamp()}.zip`, new Blob([zipped], { type: "application/zip" }));
+}
+
+export interface ParsedImport {
+  entries: PainEntry[];
+  fileErrors: { fileName: string; message: string }[];
+}
+
+function isPainEntry(value: unknown): value is PainEntry {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.id === "string" &&
+    typeof v.content === "string" &&
+    typeof v.loggedAt === "string" &&
+    typeof v.createdAt === "string" &&
+    typeof v.analysis === "object" &&
+    v.analysis !== null
+  );
+}
+
+function extractEntriesFromJSON(json: unknown): PainEntry[] {
+  const list: unknown[] = Array.isArray(json)
+    ? json
+    : Array.isArray((json as { entries?: unknown[] })?.entries)
+      ? (json as { entries: unknown[] }).entries
+      : [];
+  return list.filter(isPainEntry);
+}
+
+async function parseJSONFile(file: File): Promise<PainEntry[]> {
+  const text = await file.text();
+  return extractEntriesFromJSON(JSON.parse(text));
+}
+
+async function parseZipFile(file: File): Promise<{ entries: PainEntry[]; innerErrors: string[] }> {
+  const buffer = new Uint8Array(await file.arrayBuffer());
+  const unzipped = unzipSync(buffer);
+  const entries: PainEntry[] = [];
+  const innerErrors: string[] = [];
+  const decoder = new TextDecoder();
+
+  for (const [innerName, data] of Object.entries(unzipped)) {
+    if (!innerName.endsWith(".json")) continue;
+    try {
+      const json = JSON.parse(decoder.decode(data));
+      entries.push(...extractEntriesFromJSON(json));
+    } catch {
+      innerErrors.push(innerName);
+    }
+  }
+  return { entries, innerErrors };
+}
+
+/** 하나 이상의 내보내기 파일(JSON 또는 zip)을 읽어 유효한 기록만 모은다. 여러 파일을 한 번에 업로드할 수 있다. */
+export async function parseImportFiles(files: FileList | File[]): Promise<ParsedImport> {
+  const entries: PainEntry[] = [];
+  const fileErrors: { fileName: string; message: string }[] = [];
+
+  for (const file of Array.from(files)) {
+    try {
+      const isZip = file.name.toLowerCase().endsWith(".zip") || file.type === "application/zip";
+      if (isZip) {
+        const { entries: zipEntries, innerErrors } = await parseZipFile(file);
+        if (zipEntries.length === 0) {
+          fileErrors.push({ fileName: file.name, message: "zip 안에서 인식 가능한 기록을 찾지 못했어요." });
+        } else {
+          entries.push(...zipEntries);
+        }
+        for (const inner of innerErrors) {
+          fileErrors.push({ fileName: `${file.name} → ${inner}`, message: "JSON을 읽을 수 없어요." });
+        }
+        continue;
+      }
+
+      const valid = await parseJSONFile(file);
+      if (valid.length === 0) {
+        fileErrors.push({ fileName: file.name, message: "통증일지에서 내보낸 파일 형식이 아니에요." });
+        continue;
+      }
+      entries.push(...valid);
+    } catch {
+      fileErrors.push({ fileName: file.name, message: "파일을 읽을 수 없어요." });
+    }
+  }
+
+  return { entries, fileErrors };
+}

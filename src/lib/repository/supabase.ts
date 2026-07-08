@@ -1,7 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { classifyEntry } from "../analysis/classify";
 import { EntryAnalysis, NewEntryInput, PainEntry } from "../analysis/types";
-import { EntryRepository } from "./types";
+import { EntryRepository, ImportResult } from "./types";
 
 interface EntryRow {
   id: string;
@@ -50,5 +50,25 @@ export class SupabaseEntryRepository implements EntryRepository {
   async deleteEntry(id: string): Promise<void> {
     const { error } = await this.client.from("entries").delete().eq("id", id).eq("user_id", this.userId);
     if (error) throw error;
+  }
+
+  async importEntries(entries: PainEntry[]): Promise<ImportResult> {
+    if (entries.length === 0) return { imported: 0, skipped: 0 };
+    const rows = entries.map((e) => ({
+      id: e.id,
+      user_id: this.userId,
+      content: e.content,
+      logged_at: e.loggedAt,
+      created_at: e.createdAt,
+      analysis: e.analysis,
+    }));
+    // 이미 존재하는 id는 ignoreDuplicates로 건너뛴다 (ON CONFLICT DO NOTHING).
+    const { data, error } = await this.client
+      .from("entries")
+      .upsert(rows, { onConflict: "id", ignoreDuplicates: true })
+      .select("id");
+    if (error) throw error;
+    const imported = data?.length ?? 0;
+    return { imported, skipped: entries.length - imported };
   }
 }

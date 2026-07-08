@@ -1,6 +1,6 @@
 import { classifyEntry } from "../analysis/classify";
 import { NewEntryInput, PainEntry } from "../analysis/types";
-import { EntryRepository } from "./types";
+import { EntryRepository, ImportResult } from "./types";
 
 const STORAGE_KEY = "pain-log-entries";
 
@@ -47,5 +47,23 @@ export class LocalEntryRepository implements EntryRepository {
 
   async deleteEntry(id: string): Promise<void> {
     saveAll(loadAll().filter((e) => e.id !== id));
+  }
+
+  async importEntries(entries: PainEntry[]): Promise<ImportResult> {
+    const existing = loadAll();
+    const existingIds = new Set(existing.map((e) => e.id));
+    let imported = 0;
+    let skipped = 0;
+    for (const entry of entries) {
+      if (existingIds.has(entry.id)) {
+        skipped += 1;
+        continue;
+      }
+      existingIds.add(entry.id);
+      existing.push(entry);
+      imported += 1;
+    }
+    saveAll(existing);
+    return { imported, skipped };
   }
 }
