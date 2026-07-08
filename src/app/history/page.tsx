@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, useRef, useState } from "react";
+import { DownloadMenu } from "@/components/DownloadMenu";
 import { EntryCard } from "@/components/EntryCard";
 import { RequireAuth } from "@/components/RequireAuth";
 import {
@@ -44,78 +45,49 @@ export default function HistoryPage() {
     }
   }
 
+  const noEntries = entries.length === 0;
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
           전체 기록
         </h1>
 
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="w-24 shrink-0" style={{ color: "var(--text-muted)" }}>
-              백업 (JSON)
-            </span>
-            <button
-              type="button"
-              onClick={() => exportAllEntries(entries)}
-              disabled={entries.length === 0}
-              className="rounded-full border px-3 py-1.5 font-medium disabled:opacity-40"
-              style={buttonStyle}
-            >
-              전체 다운로드
-            </button>
-            <button
-              type="button"
-              onClick={() => exportEntriesByBodyPart(entries)}
-              disabled={entries.length === 0}
-              className="rounded-full border px-3 py-1.5 font-medium disabled:opacity-40"
-              style={buttonStyle}
-            >
-              부위별로 다운로드
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={importing}
-              className="rounded-full border px-3 py-1.5 font-medium disabled:opacity-40"
-              style={buttonStyle}
-            >
-              {importing ? "가져오는 중..." : "파일 업로드"}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/json,.json,.zip,application/zip"
-              multiple
-              hidden
-              onChange={handleFilesSelected}
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="w-24 shrink-0" style={{ color: "var(--text-muted)" }}>
-              텍스트로 보기
-            </span>
-            <button
-              type="button"
-              onClick={() => exportAllEntriesAsText(entries)}
-              disabled={entries.length === 0}
-              className="rounded-full border px-3 py-1.5 font-medium disabled:opacity-40"
-              style={buttonStyle}
-            >
-              전체 텍스트 다운로드
-            </button>
-            <button
-              type="button"
-              onClick={() => exportEntriesByBodyPartAsText(entries)}
-              disabled={entries.length === 0}
-              className="rounded-full border px-3 py-1.5 font-medium disabled:opacity-40"
-              style={buttonStyle}
-            >
-              부위별 텍스트 다운로드
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <DownloadMenu
+            label="전체 다운로드"
+            disabled={noEntries}
+            options={[
+              { label: "백업 파일 (JSON)", onClick: () => exportAllEntries(entries) },
+              { label: "텍스트 파일 (TXT)", onClick: () => exportAllEntriesAsText(entries) },
+            ]}
+          />
+          <DownloadMenu
+            label="부위별 다운로드"
+            disabled={noEntries}
+            options={[
+              { label: "백업 파일 (ZIP)", onClick: () => exportEntriesByBodyPart(entries) },
+              { label: "텍스트 파일 (ZIP)", onClick: () => exportEntriesByBodyPartAsText(entries) },
+            ]}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="rounded-full border px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+            style={buttonStyle}
+          >
+            {importing ? "가져오는 중..." : "파일 업로드"}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json,.zip,application/zip"
+            multiple
+            hidden
+            onChange={handleFilesSelected}
+          />
         </div>
       </div>
 
