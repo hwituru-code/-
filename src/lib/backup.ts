@@ -46,6 +46,55 @@ function groupByBodyPart(entries: PainEntry[]): Map<string, PainEntry[]> {
   return byPart;
 }
 
+function sortChronological(entries: PainEntry[]): PainEntry[] {
+  return [...entries].sort(
+    (a, b) => a.loggedAt.localeCompare(b.loggedAt) || a.createdAt.localeCompare(b.createdAt)
+  );
+}
+
+function formatEntryAsText(entry: PainEntry): string {
+  const { bodyParts, symptoms, lifestyleTags, severity } = entry.analysis;
+  const lines = [`[${entry.loggedAt}]${severity !== null ? ` 통증 ${severity}/10` : ""}`];
+
+  const tagParts: string[] = [];
+  if (bodyParts.length > 0) tagParts.push(`부위: ${bodyParts.join(", ")}`);
+  if (symptoms.length > 0) tagParts.push(`증상: ${symptoms.join(", ")}`);
+  if (lifestyleTags.length > 0) tagParts.push(`생활습관: ${lifestyleTags.map((t) => t.tag).join(", ")}`);
+  if (tagParts.length > 0) lines.push(tagParts.join(" · "));
+
+  lines.push(entry.content);
+  return lines.join("\n");
+}
+
+function formatEntriesAsText(title: string, entries: PainEntry[]): string {
+  const header = [title, `내보낸 날짜: ${new Date().toLocaleString("ko-KR")}`, `총 ${entries.length}개 기록`, ""].join(
+    "\n"
+  );
+  const body = sortChronological(entries)
+    .map(formatEntryAsText)
+    .join("\n\n" + "-".repeat(20) + "\n\n");
+  return `${header}\n${body}\n`;
+}
+
+/** 전체 기록을 사람이 읽기 좋은 하나의 텍스트(.txt) 파일로 내려받는다. */
+export function exportAllEntriesAsText(entries: PainEntry[]): void {
+  const text = formatEntriesAsText("통증일지 - 전체 기록", entries);
+  triggerDownload(`pain-log-all-${todayStamp()}.txt`, new Blob([text], { type: "text/plain;charset=utf-8" }));
+}
+
+/** 신체 부위별로 나눠서 여러 개의 텍스트(.txt) 파일을 하나의 zip으로 내려받는다. */
+export function exportEntriesByBodyPartAsText(entries: PainEntry[]): void {
+  const byPart = groupByBodyPart(entries);
+  const files: Record<string, Uint8Array> = {};
+  const encoder = new TextEncoder();
+  for (const [part, list] of byPart) {
+    const text = formatEntriesAsText(`통증일지 - ${part} 기록`, list);
+    files[`${sanitizeFilenamePart(part)}.txt`] = encoder.encode(text);
+  }
+  const zipped = zipSync(files);
+  triggerDownload(`pain-log-by-bodypart-text-${todayStamp()}.zip`, new Blob([zipped], { type: "application/zip" }));
+}
+
 /** 전체 기록을 하나의 JSON 파일로 내려받는다. */
 export function exportAllEntries(entries: PainEntry[]): void {
   const json = JSON.stringify(buildExportFile(entries), null, 2);
