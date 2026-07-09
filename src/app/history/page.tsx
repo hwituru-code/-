@@ -25,7 +25,7 @@ interface ImportSummary {
 }
 
 export default function HistoryPage() {
-  const { entries, entriesLoading, deleteEntry, importEntries } = useEntriesContext();
+  const { entries, entriesLoading, deleteEntry, updateEntry, importEntries } = useEntriesContext();
   const [importing, setImporting] = useState(false);
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -120,7 +120,7 @@ export default function HistoryPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {entries.map((entry) => (
-              <EntryCard key={entry.id} entry={entry} onDelete={deleteEntry} />
+              <EntryCard key={entry.id} entry={entry} onDelete={deleteEntry} onEdit={updateEntry} />
             ))}
           </div>
         )}

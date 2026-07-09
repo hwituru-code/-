@@ -19,6 +19,11 @@
 4. **추천** — `src/lib/analysis/recommendations.ts`가 (부위, 원인) 조합 또는 원인 단독
    기준으로 구체적인 개선 조언을 매칭합니다.
 
+기록은 "기록" 페이지에서 내용/날짜를 언제든 수정할 수 있고, 수정하면 태그와 강도가
+자동으로 다시 계산됩니다. 또한 "내 정보" 페이지에는 키/몸무게, 지병·만성통증·과거 병력
+같은 개인 특이사항을 자유 기술로 적어두고 수정할 수 있어 향후 더 정확한 분석의 참고
+자료로 씁니다 (`src/lib/profile/`).
+
 키워드 매칭 기반이라 완벽하지 않지만, 별도 서버나 외부 API 없이 즉시 동작하며 이후 AI
 연동(예: Claude API로 `classifyEntry`/`computeInsights` 결과를 자연어로 더 깊이 해석하기)을
 붙이기 쉽도록 각 단계가 독립된 모듈로 분리되어 있습니다.
@@ -38,8 +43,9 @@
 ### Supabase로 전환하는 방법
 
 1. [supabase.com](https://supabase.com)에서 프로젝트를 생성합니다.
-2. `supabase/migrations/0001_init.sql`을 프로젝트의 SQL Editor에서 실행합니다.
-   (`entries` 테이블 + 사용자별 데이터만 보이도록 하는 RLS 정책이 포함되어 있습니다.)
+2. `supabase/migrations/` 아래 SQL 파일들(`0001_init.sql`, `0002_profile.sql`)을 순서대로
+   프로젝트의 SQL Editor에서 실행합니다. (`entries`/`profiles` 테이블 + 사용자별 데이터만
+   보이도록 하는 RLS 정책이 포함되어 있습니다.)
 3. Supabase 프로젝트의 `Project Settings > API`에서 URL과 `anon` 키를 확인해 `.env.local`에
    채웁니다 (`.env.example` 참고).
 4. Authentication 설정에서 Email(매직 링크) 로그인이 활성화되어 있는지 확인합니다.
@@ -58,9 +64,10 @@ npm run build
 
 ```
 src/lib/analysis/        기록 분류 · 패턴 분석 · 추천 (프레임워크 독립적인 순수 로직)
-src/lib/repository/      저장소 인터페이스 + 로컬/Supabase 구현 + React 훅
+src/lib/repository/      기록 저장소 인터페이스 + 로컬/Supabase 구현 + React 훅
+src/lib/profile/         개인 특이사항(키/몸무게/병력) 저장소 인터페이스 + 로컬/Supabase 구현
 src/lib/supabase/        Supabase 브라우저 클라이언트
 src/components/          UI 컴포넌트
-src/app/                 페이지 (홈 / 기록 / 인사이트 / 로그인)
+src/app/                 페이지 (홈 / 기록 / 인사이트 / 내 정보 / 로그인)
 supabase/migrations/     Supabase 스키마
 ```

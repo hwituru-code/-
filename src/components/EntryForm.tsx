@@ -1,11 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { todayISO } from "@/lib/date";
 import { useEntriesContext } from "@/lib/repository/EntriesProvider";
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function EntryForm() {
   const { addEntry } = useEntriesContext();

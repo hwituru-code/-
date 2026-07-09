@@ -45,6 +45,21 @@ export class LocalEntryRepository implements EntryRepository {
     return entry;
   }
 
+  async updateEntry(id: string, input: NewEntryInput): Promise<PainEntry> {
+    const entries = loadAll();
+    const index = entries.findIndex((e) => e.id === id);
+    if (index === -1) throw new Error("수정할 기록을 찾지 못했습니다.");
+    const updated: PainEntry = {
+      ...entries[index],
+      content: input.content,
+      loggedAt: input.loggedAt,
+      analysis: classifyEntry(input.content),
+    };
+    entries[index] = updated;
+    saveAll(entries);
+    return updated;
+  }
+
   async deleteEntry(id: string): Promise<void> {
     saveAll(loadAll().filter((e) => e.id !== id));
   }

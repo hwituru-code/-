@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/", label: "홈" },
   { href: "/history", label: "기록" },
   { href: "/insights", label: "인사이트" },
+  { href: "/profile", label: "내 정보" },
 ];
 
 export function NavBar() {

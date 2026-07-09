@@ -47,6 +47,19 @@ export class SupabaseEntryRepository implements EntryRepository {
     return rowToEntry(data as EntryRow);
   }
 
+  async updateEntry(id: string, input: NewEntryInput): Promise<PainEntry> {
+    const analysis = classifyEntry(input.content);
+    const { data, error } = await this.client
+      .from("entries")
+      .update({ content: input.content, logged_at: input.loggedAt, analysis })
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .select("id, content, logged_at, created_at, analysis")
+      .single();
+    if (error) throw error;
+    return rowToEntry(data as EntryRow);
+  }
+
   async deleteEntry(id: string): Promise<void> {
     const { error } = await this.client.from("entries").delete().eq("id", id).eq("user_id", this.userId);
     if (error) throw error;

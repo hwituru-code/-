@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import { CATEGORY_COLOR_VAR } from "@/lib/analysis/categoryColors";
-import { PainEntry } from "@/lib/analysis/types";
+import { NewEntryInput, PainEntry } from "@/lib/analysis/types";
+import { todayISO } from "@/lib/date";
 import { TagBadge } from "./TagBadge";
 
 function severityColor(severity: number): string {
@@ -8,9 +12,99 @@ function severityColor(severity: number): string {
   return "var(--status-good)";
 }
 
-export function EntryCard({ entry, onDelete }: { entry: PainEntry; onDelete?: (id: string) => void }) {
+interface EntryCardProps {
+  entry: PainEntry;
+  onDelete?: (id: string) => void;
+  onEdit?: (id: string, input: NewEntryInput) => Promise<unknown>;
+}
+
+export function EntryCard({ entry, onDelete, onEdit }: EntryCardProps) {
+  const [editing, setEditing] = useState(false);
+  const [content, setContent] = useState(entry.content);
+  const [loggedAt, setLoggedAt] = useState(entry.loggedAt);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const { bodyParts, symptoms, lifestyleTags, severity } = entry.analysis;
   const hasTags = bodyParts.length > 0 || symptoms.length > 0 || lifestyleTags.length > 0;
+
+  function startEditing() {
+    setContent(entry.content);
+    setLoggedAt(entry.loggedAt);
+    setError(null);
+    setEditing(true);
+  }
+
+  function cancelEditing() {
+    setEditing(false);
+    setError(null);
+  }
+
+  async function handleSave() {
+    if (!onEdit || !content.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onEdit(entry.id, { content: content.trim(), loggedAt });
+      setEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "수정에 실패했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="flex flex-col gap-3 rounded-2xl border p-4" style={{ borderColor: "var(--border-hairline)", background: "var(--surface-1)" }}>
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          rows={4}
+          className="resize-none rounded-xl border bg-transparent p-3 text-sm outline-none"
+          style={{ borderColor: "var(--border-hairline)", color: "var(--text-primary)" }}
+        />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <label className="flex items-center gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+            날짜
+            <input
+              type="date"
+              value={loggedAt}
+              onChange={(e) => setLoggedAt(e.target.value)}
+              max={todayISO()}
+              className="rounded-lg border bg-transparent px-2 py-1 text-xs"
+              style={{ borderColor: "var(--border-hairline)", color: "var(--text-primary)" }}
+            />
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={cancelEditing}
+              disabled={saving}
+              className="rounded-full border px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+              style={{ borderColor: "var(--border-hairline)", color: "var(--text-primary)" }}
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !content.trim()}
+              className="rounded-full px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+              style={{ background: "var(--series-blue)" }}
+            >
+              {saving ? "저장 중..." : "저장"}
+            </button>
+          </div>
+        </div>
+        {error && (
+          <p className="text-xs" style={{ color: "var(--status-critical)" }}>
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border p-4" style={{ borderColor: "var(--border-hairline)", background: "var(--surface-1)" }}>
@@ -23,6 +117,11 @@ export function EntryCard({ entry, onDelete }: { entry: PainEntry; onDelete?: (i
             <span className="text-xs font-semibold" style={{ color: severityColor(severity) }}>
               통증 {severity}/10
             </span>
+          )}
+          {onEdit && (
+            <button onClick={startEditing} className="text-xs hover:underline" style={{ color: "var(--text-muted)" }}>
+              수정
+            </button>
           )}
           {onDelete && (
             <button onClick={() => onDelete(entry.id)} className="text-xs hover:underline" style={{ color: "var(--text-muted)" }}>
