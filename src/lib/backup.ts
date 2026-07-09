@@ -1,6 +1,6 @@
 import { unzipSync, zipSync } from "fflate";
 import { PainEntry } from "./analysis/types";
-import { UserProfile } from "./profile/types";
+import { Sex, SEX_LABEL, UserProfile } from "./profile/types";
 
 const EXPORT_VERSION = 1;
 
@@ -21,7 +21,13 @@ function todayStamp(): string {
 
 function hasProfileContent(profile?: UserProfile | null): profile is UserProfile {
   if (!profile) return false;
-  return profile.heightCm !== null || profile.weightKg !== null || profile.notes.trim().length > 0;
+  return (
+    profile.birthDate !== null ||
+    profile.sex !== null ||
+    profile.heightCm !== null ||
+    profile.weightKg !== null ||
+    profile.notes.trim().length > 0
+  );
 }
 
 function buildExportFile(entries: PainEntry[], profile?: UserProfile | null): ExportFile {
@@ -78,6 +84,8 @@ function formatEntryAsText(entry: PainEntry): string {
 function formatProfileAsText(profile?: UserProfile | null): string {
   if (!hasProfileContent(profile)) return "";
   const lines = ["[내 정보]"];
+  if (profile.birthDate) lines.push(`생년월일: ${profile.birthDate}`);
+  if (profile.sex) lines.push(`성별: ${SEX_LABEL[profile.sex]}`);
   if (profile.heightCm !== null) lines.push(`키: ${profile.heightCm}cm`);
   if (profile.weightKg !== null) lines.push(`몸무게: ${profile.weightKg}kg`);
   if (profile.notes.trim()) lines.push(`특이사항: ${profile.notes.trim()}`);
@@ -165,14 +173,26 @@ function isPainEntry(value: unknown): value is PainEntry {
   );
 }
 
-function isUserProfile(value: unknown): value is UserProfile {
+function isProfileLike(value: unknown): value is Record<string, unknown> {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
-    (v.heightCm === null || typeof v.heightCm === "number") &&
-    (v.weightKg === null || typeof v.weightKg === "number") &&
-    typeof v.notes === "string"
+    (v.heightCm === undefined || v.heightCm === null || typeof v.heightCm === "number") &&
+    (v.weightKg === undefined || v.weightKg === null || typeof v.weightKg === "number") &&
+    (v.notes === undefined || typeof v.notes === "string")
   );
+}
+
+/** 예전 백업(생년월일/성별이 없던 시절)도 열리도록 누락된 필드는 null/빈 값으로 채운다. */
+function normalizeProfile(v: Record<string, unknown>): UserProfile {
+  return {
+    birthDate: typeof v.birthDate === "string" ? v.birthDate : null,
+    sex: typeof v.sex === "string" ? (v.sex as Sex) : null,
+    heightCm: typeof v.heightCm === "number" ? v.heightCm : null,
+    weightKg: typeof v.weightKg === "number" ? v.weightKg : null,
+    notes: typeof v.notes === "string" ? v.notes : "",
+    updatedAt: typeof v.updatedAt === "string" ? v.updatedAt : null,
+  };
 }
 
 function extractEntriesFromJSON(json: unknown): PainEntry[] {
@@ -186,7 +206,7 @@ function extractEntriesFromJSON(json: unknown): PainEntry[] {
 
 function extractProfileFromJSON(json: unknown): UserProfile | null {
   const profile = (json as { profile?: unknown })?.profile;
-  return isUserProfile(profile) ? profile : null;
+  return isProfileLike(profile) ? normalizeProfile(profile) : null;
 }
 
 function isNewerProfile(candidate: UserProfile, current: UserProfile | null): boolean {

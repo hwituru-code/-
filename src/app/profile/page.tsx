@@ -2,7 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
-import { ProfileInput, UserProfile } from "@/lib/profile/types";
+import { todayISO } from "@/lib/date";
+import { ProfileInput, Sex, UserProfile } from "@/lib/profile/types";
 import { useEntriesContext } from "@/lib/repository/EntriesProvider";
 
 const fieldStyle: React.CSSProperties = {
@@ -17,6 +18,8 @@ function ProfileForm({
   profile: UserProfile;
   onSave: (input: ProfileInput) => Promise<UserProfile>;
 }) {
+  const [birthDate, setBirthDate] = useState(profile.birthDate ?? "");
+  const [sex, setSex] = useState<Sex | "">(profile.sex ?? "");
   const [heightCm, setHeightCm] = useState(profile.heightCm !== null ? String(profile.heightCm) : "");
   const [weightKg, setWeightKg] = useState(profile.weightKg !== null ? String(profile.weightKg) : "");
   const [notes, setNotes] = useState(profile.notes);
@@ -32,6 +35,8 @@ function ProfileForm({
     setSavedJustNow(false);
     try {
       const saved = await onSave({
+        birthDate: birthDate || null,
+        sex: sex || null,
         heightCm: heightCm.trim() ? Number(heightCm) : null,
         weightKg: weightKg.trim() ? Number(weightKg) : null,
         notes: notes.trim(),
@@ -51,8 +56,33 @@ function ProfileForm({
       className="flex flex-col gap-4 rounded-2xl border p-4"
       style={{ borderColor: "var(--border-hairline)", background: "var(--surface-1)" }}
     >
-      <div className="flex flex-wrap gap-4">
-        <label className="flex flex-1 flex-col gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <label className="flex flex-col gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+          생년월일
+          <input
+            type="date"
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            max={todayISO()}
+            className="rounded-lg border bg-transparent px-3 py-2 text-sm"
+            style={fieldStyle}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+          성별
+          <select
+            value={sex}
+            onChange={(e) => setSex(e.target.value as Sex | "")}
+            className="rounded-lg border bg-transparent px-3 py-2 text-sm"
+            style={fieldStyle}
+          >
+            <option value="">선택 안 함</option>
+            <option value="female">여성</option>
+            <option value="male">남성</option>
+            <option value="other">기타</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
           키 (cm)
           <input
             type="number"
@@ -65,7 +95,7 @@ function ProfileForm({
             style={fieldStyle}
           />
         </label>
-        <label className="flex flex-1 flex-col gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+        <label className="flex flex-col gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
           몸무게 (kg)
           <input
             type="number"
@@ -81,7 +111,7 @@ function ProfileForm({
       </div>
 
       <label className="flex flex-col gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
-        지병 / 만성통증 / 과거 병력 등 특이사항
+        특이사항 (과거병력 및 현재 상태 / 복용 중인 약 / 가족력 / 생활습관 등)
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -130,7 +160,8 @@ export default function ProfilePage() {
           내 정보
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          지병, 만성통증, 과거 병력, 키/몸무게처럼 분석에 참고가 될 개인 정보를 적어두세요. 언제든 다시 와서 수정할 수 있어요.
+          생년월일, 성별, 키/몸무게, 지병·만성통증·과거 병력처럼 분석에 참고가 될 개인 정보를
+          적어두세요. 언제든 다시 와서 수정할 수 있어요.
         </p>
       </div>
 

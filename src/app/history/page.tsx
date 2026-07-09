@@ -43,6 +43,8 @@ export default function HistoryPage() {
       let profileRestored = false;
       if (importedProfile) {
         await saveProfile({
+          birthDate: importedProfile.birthDate,
+          sex: importedProfile.sex,
           heightCm: importedProfile.heightCm,
           weightKg: importedProfile.weightKg,
           notes: importedProfile.notes,
