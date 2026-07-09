@@ -21,11 +21,13 @@ const buttonStyle: React.CSSProperties = {
 interface ImportSummary {
   imported: number;
   skipped: number;
+  profileRestored: boolean;
   fileErrors: { fileName: string; message: string }[];
 }
 
 export default function HistoryPage() {
-  const { entries, entriesLoading, deleteEntry, updateEntry, importEntries } = useEntriesContext();
+  const { entries, entriesLoading, deleteEntry, updateEntry, importEntries, profile, saveProfile } =
+    useEntriesContext();
   const [importing, setImporting] = useState(false);
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36,9 +38,18 @@ export default function HistoryPage() {
     setImporting(true);
     setImportSummary(null);
     try {
-      const { entries: parsed, fileErrors } = await parseImportFiles(files);
+      const { entries: parsed, profile: importedProfile, fileErrors } = await parseImportFiles(files);
       const { imported, skipped } = await importEntries(parsed);
-      setImportSummary({ imported, skipped, fileErrors });
+      let profileRestored = false;
+      if (importedProfile) {
+        await saveProfile({
+          heightCm: importedProfile.heightCm,
+          weightKg: importedProfile.weightKg,
+          notes: importedProfile.notes,
+        });
+        profileRestored = true;
+      }
+      setImportSummary({ imported, skipped, profileRestored, fileErrors });
     } finally {
       setImporting(false);
       e.target.value = "";
@@ -59,8 +70,8 @@ export default function HistoryPage() {
             label="전체 다운로드"
             disabled={noEntries}
             options={[
-              { label: "백업 파일 (JSON)", onClick: () => exportAllEntries(entries) },
-              { label: "텍스트 파일 (TXT)", onClick: () => exportAllEntriesAsText(entries) },
+              { label: "백업 파일 (JSON)", onClick: () => exportAllEntries(entries, profile) },
+              { label: "텍스트 파일 (TXT)", onClick: () => exportAllEntriesAsText(entries, profile) },
             ]}
           />
           <DownloadMenu
@@ -99,6 +110,7 @@ export default function HistoryPage() {
           <p>
             {importSummary.imported}개 가져옴
             {importSummary.skipped > 0 && `, ${importSummary.skipped}개는 이미 있어 건너뜀`}.
+            {importSummary.profileRestored && " 내 정보도 함께 복원했어요."}
           </p>
           {importSummary.fileErrors.map((err) => (
             <p key={err.fileName} style={{ color: "var(--status-critical)" }}>
